@@ -335,9 +335,33 @@
         }
     }
 
-    function getGames() {
+    // Titles and notes are user input, so they must not be parsed as markup
+    function escapeHtml(text) {
+        return String(text).replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[ch]));
+    }
+
+    function nextId(games) {
+        return games.reduce((max, g) => Math.max(max, Number(g.id) || 0), 0) + 1;
+    }
+
+    function readStored() {
         const stored = localStorage.getItem(STORE_KEY);
-        const games = stored ? JSON.parse(stored) : defaultGames;
+        if (!stored) return null;
+        try {
+            const parsed = JSON.parse(stored);
+            return Array.isArray(parsed) ? parsed : null;
+        } catch (err) {
+            // Unreadable data would otherwise break every render; start over instead
+            console.warn('Stored shelf was unreadable, falling back to the default list.', err);
+            return null;
+        }
+    }
+
+    function getGames() {
+        const stored = readStored();
+        const games = stored || defaultGames;
 
         // Only completed games can be favorites — repair anything that says otherwise
         let repaired = false;
@@ -396,7 +420,7 @@
 
         const games = getGames();
         games.push({
-            id: Date.now(),
+            id: nextId(games),
             title,
             desc,
             cat,
@@ -443,11 +467,11 @@
 
                     card.innerHTML = `
                         <div>
-                            <div class="game-title">${g.title}</div>
-                            ${g.desc ? `<div class="game-desc">${g.desc}</div>` : ''}
+                            <div class="game-title">${escapeHtml(g.title)}</div>
+                            ${g.desc ? `<div class="game-desc">${escapeHtml(g.desc)}</div>` : ''}
                         </div>
                         <div class="right-side">
-                            <span class="badge ${g.bClass}">${g.badge}</span>
+                            <span class="badge ${g.bClass}">${escapeHtml(g.badge)}</span>
                             ${g.cat === 'completed' ? `<button class="fav-btn ${g.fav ? 'active' : ''} ${g.fav && g.id === justFavvedId ? 'just-favved' : ''}" onclick="toggleFav(${g.id})" title="${g.fav ? 'Remove from favorites' : 'Add to favorites'}">${g.fav ? '★' : '☆'}</button>` : ''}
                             <button class="delete-btn" onclick="deleteGame(${g.id})" title="Delete">✕</button>
                         </div>
@@ -475,8 +499,9 @@
                 container.classList.add('drag-over');
             };
 
-            container.ondragleave = () => {
-                container.classList.remove('drag-over');
+            container.ondragleave = (e) => {
+                // Moving onto a child card also fires dragleave — keep the highlight then
+                if (!container.contains(e.relatedTarget)) container.classList.remove('drag-over');
             };
 
             container.ondrop = (e) => {
