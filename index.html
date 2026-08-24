@@ -43,6 +43,39 @@
         h1 { margin: 0; font-size: 1.8rem; }
         p.subtitle { margin: 6px 0 0 0; color: var(--text-muted); font-size: 0.9rem; }
 
+        .profile-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .profile-bar label {
+            font-size: 0.72rem;
+            letter-spacing: 0.6px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .profile-bar select {
+            min-width: 150px;
+            padding: 7px 10px;
+            font-size: 0.85rem;
+        }
+
+        .ghost-btn {
+            background: transparent;
+            border: 1px solid #475569;
+            color: var(--text-muted);
+            padding: 7px 12px;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+        }
+        .ghost-btn:hover { color: var(--text-main); border-color: var(--accent-blue); }
+
         /* FORM */
         .add-form {
             background-color: var(--card-bg);
@@ -237,7 +270,15 @@
 <div class="container">
     <header>
         <h1>🎮 Backlog Shelf</h1>
-        <p class="subtitle">Drag a game between the shelves. Everything is stored in your own browser.</p>
+        <p class="subtitle">Drag a game between the shelves. Every profile is stored in this browser only.</p>
+
+        <div class="profile-bar">
+            <label for="profileSelect">Profile</label>
+            <select id="profileSelect" onchange="switchProfile(this.value)"></select>
+            <button class="ghost-btn" onclick="createProfile()">+ New</button>
+            <button class="ghost-btn" onclick="renameProfile()">Rename</button>
+            <button class="ghost-btn" onclick="deleteProfile()">Delete</button>
+        </div>
     </header>
 
     <!-- ADD GAME FORM -->
@@ -320,7 +361,110 @@
         { id: 22, title: "Metal Gear Solid Δ: Snake Eater", desc: "Heavy stealth, so it is a risky pick", cat: "planned", badge: "BACKLOG", bClass: "badge-plan", fav: false }
     ];
 
-    const STORE_KEY = 'backlogShelf_v1';
+    const PROFILES_KEY = 'backlogShelf_profiles';
+    const SHELF_PREFIX = 'backlogShelf_v1:';
+    const LEGACY_KEY = 'backlogShelf_v1'; // single-shelf layout, before profiles existed
+
+    let profiles = [];
+    let activeProfile = '';
+
+    function shelfKey(name) {
+        return SHELF_PREFIX + name;
+    }
+
+    function loadProfiles() {
+        let meta = null;
+        try {
+            meta = JSON.parse(localStorage.getItem(PROFILES_KEY));
+        } catch (err) {
+            console.warn('Profile list was unreadable, starting a fresh one.', err);
+        }
+
+        if (meta && Array.isArray(meta.profiles) && meta.profiles.length) {
+            profiles = meta.profiles;
+            activeProfile = profiles.includes(meta.active) ? meta.active : profiles[0];
+            return;
+        }
+
+        // First run — or an upgrade from the version that had a single shelf
+        profiles = ['Me'];
+        activeProfile = 'Me';
+
+        const legacy = localStorage.getItem(LEGACY_KEY);
+        if (legacy !== null) {
+            localStorage.setItem(shelfKey('Me'), legacy);
+            localStorage.removeItem(LEGACY_KEY);
+        }
+        saveProfiles();
+    }
+
+    function saveProfiles() {
+        localStorage.setItem(PROFILES_KEY, JSON.stringify({ profiles, active: activeProfile }));
+    }
+
+    function renderProfiles() {
+        const select = document.getElementById('profileSelect');
+        select.innerHTML = '';
+        profiles.forEach(name => select.appendChild(new Option(name, name, false, name === activeProfile)));
+    }
+
+    function refreshAll() {
+        saveProfiles();
+        renderProfiles();
+        render();
+    }
+
+    function switchProfile(name) {
+        if (!profiles.includes(name)) return;
+        activeProfile = name;
+        refreshAll();
+    }
+
+    function askForName(message, preset) {
+        const name = (prompt(message, preset) || '').trim();
+        if (!name) return null;
+        if (name !== preset && profiles.some(p => p.toLowerCase() === name.toLowerCase())) {
+            alert(`There is already a profile named "${name}".`);
+            return null;
+        }
+        return name;
+    }
+
+    function createProfile() {
+        const name = askForName('Name for the new profile:', '');
+        if (!name) return;
+
+        profiles.push(name);
+        activeProfile = name;
+        localStorage.setItem(shelfKey(name), '[]'); // a new profile starts with empty shelves
+        refreshAll();
+    }
+
+    function renameProfile() {
+        const name = askForName('New name for this profile:', activeProfile);
+        if (!name || name === activeProfile) return;
+
+        const shelf = localStorage.getItem(shelfKey(activeProfile));
+        if (shelf !== null) localStorage.setItem(shelfKey(name), shelf);
+        localStorage.removeItem(shelfKey(activeProfile));
+
+        profiles[profiles.indexOf(activeProfile)] = name;
+        activeProfile = name;
+        refreshAll();
+    }
+
+    function deleteProfile() {
+        if (profiles.length === 1) {
+            alert('This is the only profile, so it cannot be deleted.');
+            return;
+        }
+        if (!confirm(`Delete the profile "${activeProfile}" and everything on its shelves?`)) return;
+
+        localStorage.removeItem(shelfKey(activeProfile));
+        profiles = profiles.filter(p => p !== activeProfile);
+        activeProfile = profiles[0];
+        refreshAll();
+    }
 
     let draggedGameId = null;
     let justFavvedId = null; // the pop animation only plays for the game just favorited
@@ -342,12 +486,45 @@
         }[ch]));
     }
 
+    // Shared by mouse drop and touch drop
+    function moveGame(id, cat) {
+        const games = getGames();
+        const game = games.find(g => g.id === id);
+        if (!game || game.cat === cat) return;
+
+        game.cat = cat;
+
+        // Let the new category set the badge
+        Object.assign(game, defaultBadgeFor(cat));
+
+        // Favorites are completed-only → moving elsewhere clears the star
+        if (cat !== 'completed') game.fav = false;
+
+        // Move the game to the end of the array → it lands at the BOTTOM of the list
+        const idx = games.indexOf(game);
+        if (idx > -1) {
+            games.splice(idx, 1);
+            games.push(game);
+        }
+
+        saveGames(games);
+    }
+
+    function listUnderPoint(x, y) {
+        const el = document.elementFromPoint(x, y);
+        return el ? el.closest('.game-list') : null;
+    }
+
+    function highlightList(list) {
+        document.querySelectorAll('.game-list').forEach(l => l.classList.toggle('drag-over', l === list));
+    }
+
     function nextId(games) {
         return games.reduce((max, g) => Math.max(max, Number(g.id) || 0), 0) + 1;
     }
 
     function readStored() {
-        const stored = localStorage.getItem(STORE_KEY);
+        const stored = localStorage.getItem(shelfKey(activeProfile));
         if (!stored) return null;
         try {
             const parsed = JSON.parse(stored);
@@ -376,12 +553,12 @@
             }
         });
 
-        if (!stored || repaired) localStorage.setItem(STORE_KEY, JSON.stringify(games));
+        if (!stored || repaired) localStorage.setItem(shelfKey(activeProfile), JSON.stringify(games));
         return games;
     }
 
     function saveGames(games) {
-        localStorage.setItem(STORE_KEY, JSON.stringify(games));
+        localStorage.setItem(shelfKey(activeProfile), JSON.stringify(games));
         render();
     }
 
@@ -489,6 +666,46 @@
                         draggedGameId = null;
                     });
 
+                    // Touch devices never fire the HTML5 drag events, so mirror them:
+                    // press and hold to pick a card up, then drag it onto another shelf.
+                    let holdTimer = null;
+                    let touchDragging = false;
+
+                    card.addEventListener('touchstart', () => {
+                        holdTimer = setTimeout(() => {
+                            touchDragging = true;
+                            draggedGameId = g.id;
+                            card.classList.add('dragging');
+                        }, 250);
+                    }, { passive: true });
+
+                    card.addEventListener('touchmove', (e) => {
+                        if (!touchDragging) {
+                            clearTimeout(holdTimer); // the finger is scrolling, not dragging
+                            return;
+                        }
+                        e.preventDefault(); // keep the page still while a card is held
+                        const touch = e.touches[0];
+                        highlightList(listUnderPoint(touch.clientX, touch.clientY));
+                    }, { passive: false });
+
+                    const endTouchDrag = (e) => {
+                        clearTimeout(holdTimer);
+                        if (!touchDragging) return;
+
+                        touchDragging = false;
+                        card.classList.remove('dragging');
+                        highlightList(null);
+
+                        const touch = e.changedTouches[0];
+                        const list = touch && listUnderPoint(touch.clientX, touch.clientY);
+                        if (list && draggedGameId) moveGame(draggedGameId, list.dataset.cat);
+                        draggedGameId = null;
+                    };
+
+                    card.addEventListener('touchend', endTouchDrag);
+                    card.addEventListener('touchcancel', endTouchDrag);
+
                     container.appendChild(card);
                 });
             }
@@ -507,36 +724,15 @@
             container.ondrop = (e) => {
                 e.preventDefault();
                 container.classList.remove('drag-over');
-
-                if (draggedGameId) {
-                    const gamesList = getGames();
-                    const targetGame = gamesList.find(g => g.id === draggedGameId);
-
-                    if (targetGame && targetGame.cat !== cat) {
-                        targetGame.cat = cat;
-
-                        // Let the new category set the badge
-                        Object.assign(targetGame, defaultBadgeFor(cat));
-
-                        // Favorites are completed-only → moving elsewhere clears the star
-                        if (cat !== 'completed') targetGame.fav = false;
-
-                        // Move the game to the end of the array → it lands at the BOTTOM of the list
-                        const idx = gamesList.indexOf(targetGame);
-                        if (idx > -1) {
-                            gamesList.splice(idx, 1);
-                            gamesList.push(targetGame);
-                        }
-
-                        saveGames(gamesList);
-                    }
-                }
+                if (draggedGameId) moveGame(draggedGameId, cat);
             };
         });
 
         justFavvedId = null; // the animation plays once
     }
 
+    loadProfiles();
+    renderProfiles();
     render();
 </script>
 
