@@ -423,7 +423,8 @@
     function askForName(message, preset) {
         const name = (prompt(message, preset) || '').trim();
         if (!name) return null;
-        if (name !== preset && profiles.some(p => p.toLowerCase() === name.toLowerCase())) {
+        // Compare against the OTHER profiles, so a profile can be recapitalised
+        if (profiles.some(p => p !== preset && p.toLowerCase() === name.toLowerCase())) {
             alert(`There is already a profile named "${name}".`);
             return null;
         }
@@ -671,7 +672,8 @@
                     let holdTimer = null;
                     let touchDragging = false;
 
-                    card.addEventListener('touchstart', () => {
+                    card.addEventListener('touchstart', (e) => {
+                        if (e.target.closest('button')) return; // tapping ★ / ✕ is not a drag
                         holdTimer = setTimeout(() => {
                             touchDragging = true;
                             draggedGameId = g.id;
