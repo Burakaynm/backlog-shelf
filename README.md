@@ -1,30 +1,36 @@
-# 🎮 Oyun Takip & Kütüphane
+# 🎮 Backlog Shelf
 
-Sürükle-bırak ile çalışan, tek dosyalık (bağımlılıksız) oyun takip listesi.
-Oyunlar tarayıcının `localStorage`'ında tutulur — sunucu, hesap veya veritabanı yok.
+A single-file, dependency-free game tracker with drag & drop shelves.
+Everything lives in your browser's `localStorage` — no server, no account, no database.
 
-## Özellikler
+## Features
 
-- **Dört liste:** Şu an oynananlar · Bitirilenler · Yarım kalanlar · Bekleyenler
-- **Sürükle & bırak:** kartı başka listeye taşı; etiket kategoriye göre kendiliğinden güncellenir, taşınan oyun listenin en altına eklenir
-- **Favoriler:** yalnızca *bitirilen* oyunlar yıldızlanabilir; favoriler listenin en üstünde görünür
-- **Hızlı ekleme formu** ve kart üzerinden silme
-- Bölüm başlıklarında adet sayacı
+- **Four shelves:** Now Playing · Completed · Dropped · Backlog
+- **Drag & drop:** move a card to another shelf; its badge updates automatically and the card lands at the bottom of the target shelf
+- **Favorites:** only *completed* games can be starred, and favorites float to the top of the shelf
+- **Quick add** form and per-card delete
+- Item counts next to each shelf heading
 
-## Kullanım
+## Usage
 
-`index.html` tek başına çalışır — tarayıcıda açman yeterli. Kurulum veya derleme adımı yok.
+Open `index.html` in a browser — that's it. No install, no build step.
 
-## Veri
+## Data
 
-Her şey tarayıcıda, `myGameListDragDrop_v2` anahtarında saklanır. Yani:
+Everything is stored locally under the `backlogShelf_v1` key, which means:
 
-- Liste **cihaza/tarayıcıya özeldir**, kişiler arasında paylaşılmaz.
-- İlk açılışta örnek bir liste yüklenir; kendi listeni kurmak için kartları silip yenilerini ekleyebilirsin.
-- Tarayıcı verisini temizlemek listeyi de siler.
+- Your shelf is **per browser / per device** and is never shared with anyone.
+- The first visit seeds an example list; delete those cards and add your own.
+- Clearing browser data clears the shelf.
 
-Sıfırdan başlamak için tarayıcı konsolunda:
+To start from scratch, run this in the browser console:
 
 ```js
-localStorage.removeItem('myGameListDragDrop_v2'); location.reload();
+localStorage.removeItem('backlogShelf_v1'); location.reload();
 ```
+
+## Deploying
+
+It is a static page, so any static host works. On [Vercel](https://vercel.com), import the
+repository and deploy with the default settings — no framework, no build command and no
+output directory needed.

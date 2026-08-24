@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Oyun Takip & Kütüphane (Sürükle & Bırak)</title>
+    <title>Backlog Shelf — Game Tracker (Drag & Drop)</title>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -109,7 +109,7 @@
             padding: 2px 8px;
         }
 
-        /* Basligi bitiren ince cizgi */
+        /* Thin rule that finishes the heading */
         h2::after {
             content: '';
             flex: 1;
@@ -193,12 +193,11 @@
         }
 
         .badge-playing { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
-        .badge-fav { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
         .badge-done { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
         .badge-drop { background: rgba(239, 68, 68, 0.2); color: #f87171; }
         .badge-plan { background: rgba(245, 158, 11, 0.2); color: #fba124; }
 
-        /* Favori: kartin etrafinda cerceve yok, yalniz yildiz */
+        /* Favorite: no ring around the card, just the star */
         .fav-btn {
             background: none;
             border: none;
@@ -237,101 +236,102 @@
 
 <div class="container">
     <header>
-        <h1>🎮 Oyun Takip & Kütüphane</h1>
+        <h1>🎮 Backlog Shelf</h1>
+        <p class="subtitle">Drag a game between the shelves. Everything is stored in your own browser.</p>
     </header>
 
-    <!-- OYUN EKLEME FORMU -->
+    <!-- ADD GAME FORM -->
     <div class="add-form">
-        <strong style="font-size: 0.9rem; color: var(--text-muted);">➕ Hızlı Oyun Ekle</strong>
+        <strong style="font-size: 0.9rem; color: var(--text-muted);">➕ Quick add</strong>
         <div class="form-row">
-            <input type="text" id="gameTitle" placeholder="Oyun Adı">
-            <input type="text" id="gameDesc" placeholder="Not / Açıklama (İsteğe bağlı)">
+            <input type="text" id="gameTitle" placeholder="Game title">
+            <input type="text" id="gameDesc" placeholder="Note / description (optional)">
         </div>
         <div class="form-row">
             <select id="gameCategory">
-                <option value="playing">🟣 Şu An Oynananlar</option>
-                <option value="completed">🟢 Bitirilenler</option>
-                <option value="dropped">🔴 Yarım Kalanlar</option>
-                <option value="planned">🟡 Bekleyenler / Satın Alınanlar</option>
+                <option value="playing">🟣 Now Playing</option>
+                <option value="completed">🟢 Completed</option>
+                <option value="dropped">🔴 Dropped</option>
+                <option value="planned">🟡 Backlog / Purchased</option>
             </select>
             <select id="gameBadge">
-                <option value="OYNANIYOR">Oynanıyor</option>
-                <option value="BİTİRİLDİ">Bitirildi</option>
-                <option value="FAVORİ ★">Favori ★ (yalnız bitirilenler)</option>
-                <option value="YARIM KALDI">Yarım Kaldı</option>
-                <option value="BIRAKILDI">Bırakıldı</option>
-                <option value="BEKLENİYOR">İndirim / Zaman Bekliyor</option>
+                <option value="PLAYING">Playing</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="FAVORITE ★">Favorite ★ (completed only)</option>
+                <option value="UNFINISHED">Unfinished</option>
+                <option value="DROPPED">Dropped</option>
+                <option value="BACKLOG">Waiting for a sale / free time</option>
             </select>
-            <button class="add-btn" onclick="addGame()">Listeye Ekle</button>
+            <button class="add-btn" onclick="addGame()">Add to shelf</button>
         </div>
     </div>
 
-    <!-- ŞU AN OYNANANLAR -->
+    <!-- NOW PLAYING -->
     <section>
-        <h2 style="color: var(--accent-purple);">🟣 Şu An Oynananlar <span class="count" id="count-playing">0</span></h2>
+        <h2 style="color: var(--accent-purple);">🟣 Now Playing <span class="count" id="count-playing">0</span></h2>
         <div class="game-list" id="list-playing" data-cat="playing"></div>
     </section>
 
-    <!-- BİTİRİLEN OYUNLAR -->
+    <!-- COMPLETED -->
     <section>
-        <h2 style="color: var(--accent-green);">🟢 Bitirilen Oyunlar <span class="count" id="count-completed">0</span></h2>
+        <h2 style="color: var(--accent-green);">🟢 Completed <span class="count" id="count-completed">0</span></h2>
         <div class="game-list" id="list-completed" data-cat="completed"></div>
     </section>
 
-    <!-- YARIM KALANLAR -->
+    <!-- DROPPED -->
     <section>
-        <h2 style="color: var(--accent-red);">🔴 Yarım Kalanlar / Sarmayanlar <span class="count" id="count-dropped">0</span></h2>
+        <h2 style="color: var(--accent-red);">🔴 Dropped / Didn't Click <span class="count" id="count-dropped">0</span></h2>
         <div class="game-list" id="list-dropped" data-cat="dropped"></div>
     </section>
 
-    <!-- BEKLEYENLER -->
+    <!-- BACKLOG -->
     <section>
-        <h2 style="color: var(--accent-amber);">🟡 Satın Alınan / Beklemedekiler <span class="count" id="count-planned">0</span></h2>
+        <h2 style="color: var(--accent-amber);">🟡 Purchased / Backlog <span class="count" id="count-planned">0</span></h2>
         <div class="game-list" id="list-planned" data-cat="planned"></div>
     </section>
 </div>
 
 <script>
     const defaultGames = [
-        { id: 20, title: "Final Fantasy XVI", desc: "Hikaye & aksiyon harika, aktif olarak oynanıyor", cat: "playing", badge: "OYNANIYOR", bClass: "badge-playing" },
+        { id: 20, title: "Final Fantasy XVI", desc: "Great story and combat, currently in progress", cat: "playing", badge: "PLAYING", bClass: "badge-playing", fav: false },
 
-        { id: 1, title: "Red Dead Redemption 2", desc: "Arthur Morgan ile mükemmel bağ & hikaye", cat: "completed", badge: "FAVORİ ★", bClass: "badge-fav" },
-        { id: 2, title: "Kingdom Come: Deliverance 2", desc: "Henry'nin intikam hikayesi ve karakter bağı", cat: "completed", badge: "FAVORİ ★", bClass: "badge-fav" },
-        { id: 3, title: "Kingdom Come: Deliverance 1", desc: "", cat: "completed", badge: "BİTİRİLDİ", bClass: "badge-done" },
-        { id: 4, title: "Elden Ring", desc: "", cat: "completed", badge: "BİTİRİLDİ", bClass: "badge-done" },
-        { id: 5, title: "Cyberpunk 2077", desc: "", cat: "completed", badge: "BİTİRİLDİ", bClass: "badge-done" },
-        { id: 6, title: "Ghost of Tsushima", desc: "", cat: "completed", badge: "BİTİRİLDİ", bClass: "badge-done" },
-        { id: 7, title: "Detroit: Become Human", desc: "", cat: "completed", badge: "BİTİRİLDİ", bClass: "badge-done" },
-        { id: 8, title: "The Last of Us Part 1", desc: "", cat: "completed", badge: "BİTİRİLDİ", bClass: "badge-done" },
-        { id: 9, title: "Mafia 1 Definitive Edition", desc: "", cat: "completed", badge: "BİTİRİLDİ", bClass: "badge-done" },
-        { id: 10, title: "Mount & Blade II: Bannerlord", desc: "", cat: "completed", badge: "BİTİRİLDİ", bClass: "badge-done" },
-        { id: 11, title: "Clair Obscur: Expedition 33", desc: "", cat: "completed", badge: "BİTİRİLDİ", bClass: "badge-done" },
-        { id: 12, title: "Death Stranding 1 & 2", desc: "", cat: "completed", badge: "BİTİRİLDİ", bClass: "badge-done" },
-        
-        { id: 13, title: "God of War (2018)", desc: "6-7 saat oynandı, vuruş hissi/hikaye sevildi ama salındı", cat: "dropped", badge: "YARIM KALDI", bClass: "badge-drop" },
-        { id: 14, title: "Days Gone", desc: "20 saat oynandı, animasyonlar kütük geldi", cat: "dropped", badge: "BIRAKILDI", bClass: "badge-drop" },
-        { id: 15, title: "Spider-Man Remastered & AC Valhalla", desc: "GoT ve Elden Ring sonrası dövüşleri sığ geldi", cat: "dropped", badge: "BIRAKILDI", bClass: "badge-drop" },
-        { id: 16, title: "Uncharted 4: A Thief's End", desc: "Klavye kontrolleri garip geldi, aşırı film tarzı sarmadı", cat: "dropped", badge: "BIRAKILDI", bClass: "badge-drop" },
-        { id: 17, title: "Witcher 3: Wild Hunt", desc: "Grafik ve mekanikler eski geldi", cat: "dropped", badge: "BIRAKILDI", bClass: "badge-drop" },
-        { id: 18, title: "Star Wars Jedi: Fallen Order", desc: "Eskiden kolla oynarken ilk boss'ta sinirlenip bırakıldı", cat: "dropped", badge: "BIRAKILDI", bClass: "badge-drop" },
-        { id: 19, title: "Max Payne 3 & Metro Exodus", desc: "Max Payne fazla sığ, Metro aşırı yavaş geldi", cat: "dropped", badge: "BIRAKILDI", bClass: "badge-drop" },
+        { id: 1, title: "Red Dead Redemption 2", desc: "Superb story and a real bond with Arthur Morgan", cat: "completed", badge: "COMPLETED", bClass: "badge-done", fav: true },
+        { id: 2, title: "Kingdom Come: Deliverance 2", desc: "Henry's revenge arc and character growth", cat: "completed", badge: "COMPLETED", bClass: "badge-done", fav: true },
+        { id: 3, title: "Kingdom Come: Deliverance 1", desc: "", cat: "completed", badge: "COMPLETED", bClass: "badge-done", fav: false },
+        { id: 4, title: "Elden Ring", desc: "", cat: "completed", badge: "COMPLETED", bClass: "badge-done", fav: false },
+        { id: 5, title: "Cyberpunk 2077", desc: "", cat: "completed", badge: "COMPLETED", bClass: "badge-done", fav: false },
+        { id: 6, title: "Ghost of Tsushima", desc: "", cat: "completed", badge: "COMPLETED", bClass: "badge-done", fav: false },
+        { id: 7, title: "Detroit: Become Human", desc: "", cat: "completed", badge: "COMPLETED", bClass: "badge-done", fav: false },
+        { id: 8, title: "The Last of Us Part 1", desc: "", cat: "completed", badge: "COMPLETED", bClass: "badge-done", fav: false },
+        { id: 9, title: "Mafia 1 Definitive Edition", desc: "", cat: "completed", badge: "COMPLETED", bClass: "badge-done", fav: false },
+        { id: 10, title: "Mount & Blade II: Bannerlord", desc: "", cat: "completed", badge: "COMPLETED", bClass: "badge-done", fav: false },
+        { id: 11, title: "Clair Obscur: Expedition 33", desc: "", cat: "completed", badge: "COMPLETED", bClass: "badge-done", fav: false },
+        { id: 12, title: "Death Stranding 1 & 2", desc: "", cat: "completed", badge: "COMPLETED", bClass: "badge-done", fav: false },
 
-        { id: 21, title: "Cyberpunk 2077: Phantom Liberty (DLC)", desc: "Kütüphanede var, uygun vakitte oynanacak", cat: "planned", badge: "BEKLENİYOR", bClass: "badge-plan" },
-        { id: 22, title: "Metal Gear Solid Δ: Snake Eater", desc: "Aşırı gizlilik (stealth) içerdiği için riskli", cat: "planned", badge: "BEKLENİYOR", bClass: "badge-plan" }
+        { id: 13, title: "God of War (2018)", desc: "6-7 hours in; loved the combat feel and story but drifted away", cat: "dropped", badge: "UNFINISHED", bClass: "badge-drop", fav: false },
+        { id: 14, title: "Days Gone", desc: "20 hours in; animations felt clunky", cat: "dropped", badge: "DROPPED", bClass: "badge-drop", fav: false },
+        { id: 15, title: "Spider-Man Remastered & AC Valhalla", desc: "Combat felt shallow after Ghost of Tsushima and Elden Ring", cat: "dropped", badge: "DROPPED", bClass: "badge-drop", fav: false },
+        { id: 16, title: "Uncharted 4: A Thief's End", desc: "Keyboard controls felt odd, too movie-like for my taste", cat: "dropped", badge: "DROPPED", bClass: "badge-drop", fav: false },
+        { id: 17, title: "Witcher 3: Wild Hunt", desc: "Visuals and mechanics felt dated", cat: "dropped", badge: "DROPPED", bClass: "badge-drop", fav: false },
+        { id: 18, title: "Star Wars Jedi: Fallen Order", desc: "Rage-quit at the first boss back in the gamepad days", cat: "dropped", badge: "DROPPED", bClass: "badge-drop", fav: false },
+        { id: 19, title: "Max Payne 3 & Metro Exodus", desc: "Max Payne too shallow, Metro way too slow", cat: "dropped", badge: "DROPPED", bClass: "badge-drop", fav: false },
+
+        { id: 21, title: "Cyberpunk 2077: Phantom Liberty (DLC)", desc: "Owned, waiting for the right time", cat: "planned", badge: "BACKLOG", bClass: "badge-plan", fav: false },
+        { id: 22, title: "Metal Gear Solid Δ: Snake Eater", desc: "Heavy stealth, so it is a risky pick", cat: "planned", badge: "BACKLOG", bClass: "badge-plan", fav: false }
     ];
 
-    const STORE_KEY = 'myGameListDragDrop_v2';
+    const STORE_KEY = 'backlogShelf_v1';
 
     let draggedGameId = null;
-    let justFavvedId = null; // yildiz animasyonu yalniz yeni isaretlenene uygulanir
+    let justFavvedId = null; // the pop animation only plays for the game just favorited
 
-    // Kategorinin varsayilan etiketi (favori artik etikette degil, yildizda tutuluyor)
+    // Default badge of a category (favorite lives on the star, not on the badge)
     function defaultBadgeFor(cat) {
         switch (cat) {
-            case 'playing':   return { badge: 'OYNANIYOR',  bClass: 'badge-playing' };
-            case 'completed': return { badge: 'BİTİRİLDİ',  bClass: 'badge-done' };
-            case 'dropped':   return { badge: 'BIRAKILDI',  bClass: 'badge-drop' };
-            default:          return { badge: 'BEKLENİYOR', bClass: 'badge-plan' };
+            case 'playing':   return { badge: 'PLAYING',   bClass: 'badge-playing' };
+            case 'completed': return { badge: 'COMPLETED', bClass: 'badge-done' };
+            case 'dropped':   return { badge: 'DROPPED',   bClass: 'badge-drop' };
+            default:          return { badge: 'BACKLOG',   bClass: 'badge-plan' };
         }
     }
 
@@ -339,21 +339,20 @@
         const stored = localStorage.getItem(STORE_KEY);
         const games = stored ? JSON.parse(stored) : defaultGames;
 
-        // Eski kayitlar: "FAVORİ ★" etiketi olanlari fav alanina tasi.
-        // Favori yalniz BITIRILEN oyunlarda olabilir.
-        let migrated = false;
+        // Only completed games can be favorites — repair anything that says otherwise
+        let repaired = false;
         games.forEach(g => {
             if (g.fav === undefined) {
                 g.fav = g.cat === 'completed' && /FAVOR/i.test(g.badge || '');
                 if (/FAVOR/i.test(g.badge || '')) Object.assign(g, defaultBadgeFor(g.cat));
-                migrated = true;
+                repaired = true;
             } else if (g.fav && g.cat !== 'completed') {
                 g.fav = false;
-                migrated = true;
+                repaired = true;
             }
         });
 
-        if (!stored || migrated) localStorage.setItem(STORE_KEY, JSON.stringify(games));
+        if (!stored || repaired) localStorage.setItem(STORE_KEY, JSON.stringify(games));
         return games;
     }
 
@@ -365,7 +364,7 @@
     function toggleFav(id) {
         const games = getGames();
         const game = games.find(g => g.id === id);
-        if (!game || game.cat !== 'completed') return; // favori yalniz bitirilenlerde
+        if (!game || game.cat !== 'completed') return; // favorites are completed-only
 
         game.fav = !game.fav;
         justFavvedId = game.fav ? id : null;
@@ -379,11 +378,11 @@
         const selected = document.getElementById('gameBadge').value;
 
         if (!title) {
-            alert('Lütfen bir oyun adı girin!');
+            alert('Please enter a game title.');
             return;
         }
 
-        // "Favori ★" secildiyse: etiket kategoriye gore konur; yildiz yalniz bitirilenlerde
+        // "Favorite ★" sets the star and lets the category pick the badge; completed-only
         const wantsFav = /FAVOR/i.test(selected);
         const fav = wantsFav && cat === 'completed';
         let badge = selected;
@@ -391,9 +390,9 @@
 
         if (wantsFav) {
             ({ badge, bClass } = defaultBadgeFor(cat));
-        } else if (selected.includes('OYNANIYOR')) bClass = 'badge-playing';
-        else if (selected.includes('BIRAKILDI') || selected.includes('YARIM')) bClass = 'badge-drop';
-        else if (selected.includes('BEKLENİYOR')) bClass = 'badge-plan';
+        } else if (selected.includes('PLAYING')) bClass = 'badge-playing';
+        else if (selected.includes('DROPPED') || selected.includes('UNFINISHED')) bClass = 'badge-drop';
+        else if (selected.includes('BACKLOG')) bClass = 'badge-plan';
 
         const games = getGames();
         games.push({
@@ -420,12 +419,12 @@
 
     function render() {
         const games = getGames();
-        
+
         ['playing', 'completed', 'dropped', 'planned'].forEach(cat => {
             const container = document.getElementById(`list-${cat}`);
             container.innerHTML = '';
-            
-            // Favoriler listenin en USTUNDE (sort kararli, geri kalan sira korunur)
+
+            // Favorites float to the TOP (sort is stable, so the rest keeps its order)
             const filtered = games
                 .filter(g => g.cat === cat)
                 .sort((a, b) => (b.fav ? 1 : 0) - (a.fav ? 1 : 0));
@@ -434,7 +433,7 @@
             if (counter) counter.textContent = filtered.length;
 
             if (filtered.length === 0) {
-                container.innerHTML = '<div class="empty-hint">Buraya bir oyun sürükleyin.</div>';
+                container.innerHTML = '<div class="empty-hint">Drag a game here.</div>';
             } else {
                 filtered.forEach(g => {
                     const card = document.createElement('div');
@@ -449,8 +448,8 @@
                         </div>
                         <div class="right-side">
                             <span class="badge ${g.bClass}">${g.badge}</span>
-                            ${g.cat === 'completed' ? `<button class="fav-btn ${g.fav ? 'active' : ''} ${g.fav && g.id === justFavvedId ? 'just-favved' : ''}" onclick="toggleFav(${g.id})" title="${g.fav ? 'Favoriden çıkar' : 'Favoriye ekle'}">${g.fav ? '★' : '☆'}</button>` : ''}
-                            <button class="delete-btn" onclick="deleteGame(${g.id})" title="Sil">✕</button>
+                            ${g.cat === 'completed' ? `<button class="fav-btn ${g.fav ? 'active' : ''} ${g.fav && g.id === justFavvedId ? 'just-favved' : ''}" onclick="toggleFav(${g.id})" title="${g.fav ? 'Remove from favorites' : 'Add to favorites'}">${g.fav ? '★' : '☆'}</button>` : ''}
+                            <button class="delete-btn" onclick="deleteGame(${g.id})" title="Delete">✕</button>
                         </div>
                     `;
 
@@ -483,21 +482,21 @@
             container.ondrop = (e) => {
                 e.preventDefault();
                 container.classList.remove('drag-over');
-                
+
                 if (draggedGameId) {
                     const gamesList = getGames();
                     const targetGame = gamesList.find(g => g.id === draggedGameId);
-                    
+
                     if (targetGame && targetGame.cat !== cat) {
                         targetGame.cat = cat;
-                        
-                        // Kategoriye göre etiketi otomatik güncelle
+
+                        // Let the new category set the badge
                         Object.assign(targetGame, defaultBadgeFor(cat));
 
-                        // Favori yalniz bitirilenlerde olabilir → baska listeye tasinirsa yildiz duser
+                        // Favorites are completed-only → moving elsewhere clears the star
                         if (cat !== 'completed') targetGame.fav = false;
 
-                        // Sürüklenen oyunu dizinin sonuna taşı → hedef listenin en ALTINDA görünsün
+                        // Move the game to the end of the array → it lands at the BOTTOM of the list
                         const idx = gamesList.indexOf(targetGame);
                         if (idx > -1) {
                             gamesList.splice(idx, 1);
@@ -510,7 +509,7 @@
             };
         });
 
-        justFavvedId = null; // animasyon bir kez oynar
+        justFavvedId = null; // the animation plays once
     }
 
     render();
