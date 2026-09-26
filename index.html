@@ -706,6 +706,15 @@
     function render() {
         const games = getGames();
 
+        // Other cards re-render the shelves too (a drop, a star, an add): keep what was typed
+        // into the open form instead of rebuilding it from the stored values
+        const openForm = document.querySelector('.game-card.editing');
+        const draft = openForm && Number(openForm.dataset.id) === editingId ? {
+            title: openForm.querySelector('.edit-title').value,
+            desc: openForm.querySelector('.edit-desc').value,
+            focused: openForm.contains(document.activeElement) ? document.activeElement.className : null
+        } : null;
+
         ['playing', 'completed', 'dropped', 'planned'].forEach(cat => {
             const container = document.getElementById(`list-${cat}`);
             container.innerHTML = '';
@@ -728,15 +737,16 @@
                     if (g.id === editingId) {
                         card.className = `game-card ${g.cat} editing`;
                         card.innerHTML = `
-                            <input type="text" class="edit-title" value="${escapeHtml(g.title)}" placeholder="Game title">
-                            <input type="text" class="edit-desc" value="${escapeHtml(g.desc || '')}" placeholder="Note / description (optional)">
+                            <input type="text" class="edit-title" value="${escapeHtml(draft ? draft.title : g.title)}" placeholder="Game title">
+                            <input type="text" class="edit-desc" value="${escapeHtml(draft ? draft.desc : (g.desc || ''))}" placeholder="Note / description (optional)">
                             <div class="edit-actions">
                                 <button class="ghost-btn" onclick="cancelEdit()">Cancel</button>
                                 <button class="save-btn" onclick="saveEdit(${g.id})">Save</button>
                             </div>
                         `;
                         card.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter' && e.target.tagName === 'INPUT') saveEdit(g.id);
+                            // An Enter that confirms an IME composition is not a save
+                            if (e.key === 'Enter' && !e.isComposing && e.target.tagName === 'INPUT') saveEdit(g.id);
                             else if (e.key === 'Escape') cancelEdit();
                         });
                         container.appendChild(card);
@@ -838,6 +848,11 @@
                 if (draggedGameId) moveGame(draggedGameId, cat);
             };
         });
+
+        if (draft && draft.focused) {
+            const el = document.querySelector(`.game-card.editing .${draft.focused}`);
+            if (el) el.focus();
+        }
 
         justFavvedId = null; // the animation plays once
     }
