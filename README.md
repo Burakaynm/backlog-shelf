@@ -8,7 +8,10 @@ Everything lives in your browser's `localStorage` — no server, no account, no 
 - **Four shelves:** Now Playing · Completed · Dropped · Backlog
 - **Drag & drop:** move a card to another shelf; its badge updates automatically and the card lands at the bottom of the target shelf. On touch devices, press and hold a card for a moment to pick it up, then drag it onto another shelf
 - **Favorites:** only *completed* games can be starred, and favorites float to the top of the shelf
-- **Quick add** form and per-card delete
+- **Quick add:** pick a shelf and add — the shelf sets the badge. A ★ Favorite checkbox appears
+  when the shelf is Completed
+- **Edit:** click ✎ (or double-click a card) to change its title and note; Enter saves, Esc cancels
+- Per-card delete
 - Item counts next to each shelf heading
 
 - **Profiles:** several people can share the same browser — create, switch, rename and delete profiles from the header. Each profile keeps its own four shelves, and a new profile starts empty

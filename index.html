@@ -122,6 +122,27 @@
         }
         button.add-btn:hover { opacity: 0.9; }
 
+        .fav-check {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            user-select: none;
+        }
+        .fav-check[hidden] { display: none; }
+        .fav-check input {
+            flex: none;
+            min-width: 0;
+            width: 16px;
+            height: 16px;
+            margin: 0;
+            padding: 0;
+            accent-color: var(--accent-amber);
+            cursor: pointer;
+        }
+
         section { margin-bottom: 24px; }
 
         h2 {
@@ -254,7 +275,7 @@
             100% { transform: scale(1); }
         }
 
-        .delete-btn {
+        .delete-btn, .edit-btn {
             background: none;
             border: none;
             color: var(--text-muted);
@@ -263,6 +284,37 @@
             padding: 2px 6px;
         }
         .delete-btn:hover { color: var(--accent-red); }
+        .edit-btn:hover { color: var(--accent-blue); }
+
+        /* Edit mode: the card turns into a small inline form */
+        .game-card.editing {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+            cursor: default;
+            user-select: text;
+        }
+        .game-card.editing:hover { transform: none; }
+        .game-card.editing input {
+            flex: none;
+            min-width: 0;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .edit-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .save-btn {
+            background-color: var(--accent-blue);
+            border: none;
+            font-weight: 600;
+            padding: 7px 14px;
+            font-size: 0.82rem;
+            cursor: pointer;
+        }
+        .save-btn:hover { opacity: 0.9; }
     </style>
 </head>
 <body>
@@ -289,20 +341,15 @@
             <input type="text" id="gameDesc" placeholder="Note / description (optional)">
         </div>
         <div class="form-row">
-            <select id="gameCategory">
+            <select id="gameCategory" onchange="syncFavOption()">
                 <option value="playing">🟣 Now Playing</option>
                 <option value="completed">🟢 Completed</option>
                 <option value="dropped">🔴 Dropped</option>
                 <option value="planned">🟡 Backlog / Purchased</option>
             </select>
-            <select id="gameBadge">
-                <option value="PLAYING">Playing</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="FAVORITE ★">Favorite ★ (completed only)</option>
-                <option value="UNFINISHED">Unfinished</option>
-                <option value="DROPPED">Dropped</option>
-                <option value="BACKLOG">Waiting for a sale / free time</option>
-            </select>
+            <label class="fav-check" id="favCheckLabel" hidden>
+                <input type="checkbox" id="gameFav"> ★ Favorite
+            </label>
             <button class="add-btn" onclick="addGame()">Add to shelf</button>
         </div>
     </div>
@@ -409,6 +456,7 @@
     }
 
     function refreshAll() {
+        editingId = null; // ids are per profile, so an open form must not follow a switch
         saveProfiles();
         renderProfiles();
         render();
@@ -469,6 +517,7 @@
 
     let draggedGameId = null;
     let justFavvedId = null; // the pop animation only plays for the game just favorited
+    let editingId = null;    // the card currently shown as an edit form, one at a time
 
     // Default badge of a category (favorite lives on the star, not on the badge)
     function defaultBadgeFor(cat) {
@@ -577,24 +626,13 @@
         const title = document.getElementById('gameTitle').value.trim();
         const desc = document.getElementById('gameDesc').value.trim();
         const cat = document.getElementById('gameCategory').value;
-        const selected = document.getElementById('gameBadge').value;
+        // Favorites are completed-only; the checkbox is hidden on the other shelves
+        const fav = cat === 'completed' && document.getElementById('gameFav').checked;
 
         if (!title) {
             alert('Please enter a game title.');
             return;
         }
-
-        // "Favorite ★" sets the star and lets the category pick the badge; completed-only
-        const wantsFav = /FAVOR/i.test(selected);
-        const fav = wantsFav && cat === 'completed';
-        let badge = selected;
-        let bClass = 'badge-done';
-
-        if (wantsFav) {
-            ({ badge, bClass } = defaultBadgeFor(cat));
-        } else if (selected.includes('PLAYING')) bClass = 'badge-playing';
-        else if (selected.includes('DROPPED') || selected.includes('UNFINISHED')) bClass = 'badge-drop';
-        else if (selected.includes('BACKLOG')) bClass = 'badge-plan';
 
         const games = getGames();
         games.push({
@@ -602,8 +640,7 @@
             title,
             desc,
             cat,
-            badge,
-            bClass,
+            ...defaultBadgeFor(cat), // the shelf decides the badge, same as when dragging
             fav
         });
 
@@ -611,6 +648,53 @@
 
         document.getElementById('gameTitle').value = '';
         document.getElementById('gameDesc').value = '';
+        document.getElementById('gameFav').checked = false;
+    }
+
+    // The star only exists on the Completed shelf, so only offer it there
+    function syncFavOption() {
+        const completed = document.getElementById('gameCategory').value === 'completed';
+        document.getElementById('favCheckLabel').hidden = !completed;
+        if (!completed) document.getElementById('gameFav').checked = false;
+    }
+
+    function startEdit(id) {
+        editingId = id;
+        render();
+        const input = document.querySelector('.game-card.editing .edit-title');
+        if (input) {
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
+    }
+
+    function cancelEdit() {
+        editingId = null;
+        render();
+    }
+
+    function saveEdit(id) {
+        const card = document.querySelector('.game-card.editing');
+        if (!card) return;
+
+        const titleInput = card.querySelector('.edit-title');
+        const title = titleInput.value.trim();
+        const desc = card.querySelector('.edit-desc').value.trim();
+
+        if (!title) {
+            alert('Please enter a game title.');
+            titleInput.focus();
+            return;
+        }
+
+        const games = getGames();
+        const game = games.find(g => g.id === id);
+        if (game) {
+            game.title = title;
+            game.desc = desc;
+        }
+        editingId = null;
+        saveGames(games);
     }
 
     function deleteGame(id) {
@@ -639,9 +723,28 @@
             } else {
                 filtered.forEach(g => {
                     const card = document.createElement('div');
+                    card.setAttribute('data-id', g.id);
+
+                    if (g.id === editingId) {
+                        card.className = `game-card ${g.cat} editing`;
+                        card.innerHTML = `
+                            <input type="text" class="edit-title" value="${escapeHtml(g.title)}" placeholder="Game title">
+                            <input type="text" class="edit-desc" value="${escapeHtml(g.desc || '')}" placeholder="Note / description (optional)">
+                            <div class="edit-actions">
+                                <button class="ghost-btn" onclick="cancelEdit()">Cancel</button>
+                                <button class="save-btn" onclick="saveEdit(${g.id})">Save</button>
+                            </div>
+                        `;
+                        card.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter' && e.target.tagName === 'INPUT') saveEdit(g.id);
+                            else if (e.key === 'Escape') cancelEdit();
+                        });
+                        container.appendChild(card);
+                        return; // an open form is not draggable
+                    }
+
                     card.className = `game-card ${g.cat}`;
                     card.setAttribute('draggable', 'true');
-                    card.setAttribute('data-id', g.id);
 
                     card.innerHTML = `
                         <div>
@@ -651,9 +754,15 @@
                         <div class="right-side">
                             <span class="badge ${g.bClass}">${escapeHtml(g.badge)}</span>
                             ${g.cat === 'completed' ? `<button class="fav-btn ${g.fav ? 'active' : ''} ${g.fav && g.id === justFavvedId ? 'just-favved' : ''}" onclick="toggleFav(${g.id})" title="${g.fav ? 'Remove from favorites' : 'Add to favorites'}">${g.fav ? '★' : '☆'}</button>` : ''}
+                            <button class="edit-btn" onclick="startEdit(${g.id})" title="Edit">✎</button>
                             <button class="delete-btn" onclick="deleteGame(${g.id})" title="Delete">✕</button>
                         </div>
                     `;
+
+                    // Double-clicking the card (not its buttons) opens the edit form too
+                    card.addEventListener('dblclick', (e) => {
+                        if (!e.target.closest('button')) startEdit(g.id);
+                    });
 
                     // Drag Events
                     card.addEventListener('dragstart', (e) => {
@@ -735,6 +844,7 @@
 
     loadProfiles();
     renderProfiles();
+    syncFavOption(); // the browser may restore a previously picked shelf on reload
     render();
 </script>
 
