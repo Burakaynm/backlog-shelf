@@ -709,10 +709,12 @@
         // Other cards re-render the shelves too (a drop, a star, an add): keep what was typed
         // into the open form instead of rebuilding it from the stored values
         const openForm = document.querySelector('.game-card.editing');
+        const active = openForm && openForm.contains(document.activeElement) ? document.activeElement : null;
         const draft = openForm && Number(openForm.dataset.id) === editingId ? {
             title: openForm.querySelector('.edit-title').value,
             desc: openForm.querySelector('.edit-desc').value,
-            focused: openForm.contains(document.activeElement) ? document.activeElement.className : null
+            focused: active ? active.className : null,
+            caret: active && active.tagName === 'INPUT' ? [active.selectionStart, active.selectionEnd] : null
         } : null;
 
         ['playing', 'completed', 'dropped', 'planned'].forEach(cat => {
@@ -851,7 +853,10 @@
 
         if (draft && draft.focused) {
             const el = document.querySelector(`.game-card.editing .${draft.focused}`);
-            if (el) el.focus();
+            if (el) {
+                el.focus();
+                if (draft.caret) el.setSelectionRange(...draft.caret);
+            }
         }
 
         justFavvedId = null; // the animation plays once
